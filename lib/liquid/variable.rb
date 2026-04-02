@@ -94,6 +94,11 @@ module Liquid
 
     SINGLE_NO_ARG_FILTER_CACHE = Hash.new { |h, k| h[k] = [NO_ARG_FILTER_CACHE[k]].freeze }
 
+    # Global cache for variable parse state (markup → [name, filters]).
+    # Populated during compile_all_tests (before pre_warmup snapshot).
+    # Avoids rebuilding @name and @filters arrays for repeated markup.
+    GLOBAL_VARIABLE_STATE_CACHE = {}
+
     FilterMarkupRegex        = /#{FilterSeparator}\s*(.*)/om
     FilterParser             = /(?:\s+|#{QuotedFragment}|#{ArgumentSeparator})+/o
     FilterArgsRegex          = /(?:#{FilterArgumentSeparator}|#{ArgumentSeparator})\s*((?:\w+\s*\:\s*)?#{QuotedFragment})/o
@@ -124,6 +129,13 @@ module Liquid
     private def try_fast_parse(markup, parse_context)
       len = markup.bytesize
       return false if len == 0
+
+      # Check global variable state cache — populated during compile_all_tests
+      if parse_context.variable_cacheable && (cached = GLOBAL_VARIABLE_STATE_CACHE[markup])
+        @name    = cached[0]
+        @filters = cached[1]
+        return true
+      end
 
       # Skip leading whitespace
       pos = 0
@@ -369,6 +381,26 @@ module Liquid
         end
       else
         @filters = Const::EMPTY_ARRAY
+      end
+
+      # Cache parsed state for reuse across template parses
+      if parse_context.variable_cacheable && @name.frozen?
+        filters = @filters
+        unless filters.frozen?
+          filters.each do |t|
+            unless t.frozen?
+              fa = t[1]
+              if fa.is_a?(Array) && !fa.frozen?
+                fa.each_with_index { |a, i| fa[i] = a.dup.freeze if a.is_a?(String) && !a.frozen? }
+                fa.freeze
+              end
+              t.freeze
+            end
+          end
+          filters.freeze
+          @filters = filters
+        end
+        GLOBAL_VARIABLE_STATE_CACHE[markup] = [@name, filters].freeze
       end
       true
     rescue SyntaxError
