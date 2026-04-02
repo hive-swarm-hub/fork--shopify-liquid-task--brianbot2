@@ -42,7 +42,11 @@ module Liquid
       @string_scanner = (Thread.current[:_liq_ss] ||= StringScanner.new(""))
       @string_scanner.string = ""
 
-      @expression_cache = if options[:expression_cache].nil?
+      @expression_cache = if @variable_cacheable
+        # variable_cacheable=true means default options; use nil cache and rely on
+        # thread-local expression cache in Expression.parse (avoids per-parse Hash alloc)
+        nil
+      elsif options[:expression_cache].nil?
         {}
       elsif options[:expression_cache].respond_to?(:[]) && options[:expression_cache].respond_to?(:[]=)
         options[:expression_cache]

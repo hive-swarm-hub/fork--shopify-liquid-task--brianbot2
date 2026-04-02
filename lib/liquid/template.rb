@@ -81,7 +81,7 @@ module Liquid
       # creates a new <tt>Template</tt> object from liquid source code
       # To enable profiling, pass in <tt>profile: true</tt> as an option.
       # See Liquid::Profiler for more information
-      def parse(source, options = {})
+      def parse(source, options = Const::EMPTY_HASH)
         environment = options[:environment] || Environment.default
         new(environment: environment).parse(source, options)
       end
@@ -95,7 +95,7 @@ module Liquid
 
     # Parse source code.
     # Returns self for easy chaining
-    def parse(source, options = {})
+    def parse(source, options = Const::EMPTY_HASH)
       parse_context = configure_options(options)
       source = source.to_s.to_str
 
