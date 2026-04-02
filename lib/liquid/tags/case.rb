@@ -64,21 +64,22 @@ module Liquid
 
     def render_to_output_buffer(context, output)
       execute_else_block = true
+      blocks = @blocks
+      i = 0
+      len = blocks.length
 
-      @blocks.each do |block|
+      while i < len
+        block = blocks[i]
         if block.else?
           block.attachment.render_to_output_buffer(context, output) if execute_else_block
-          next
+        else
+          result = Liquid::Utils.to_liquid_value(block.evaluate(context))
+          if result
+            execute_else_block = false
+            block.attachment.render_to_output_buffer(context, output)
+          end
         end
-
-        result = Liquid::Utils.to_liquid_value(
-          block.evaluate(context),
-        )
-
-        if result
-          execute_else_block = false
-          block.attachment.render_to_output_buffer(context, output)
-        end
+        i += 1
       end
 
       output
