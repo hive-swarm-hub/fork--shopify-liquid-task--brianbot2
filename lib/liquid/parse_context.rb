@@ -5,6 +5,11 @@ module Liquid
     attr_accessor :locale, :line_number, :trim_whitespace, :depth
     attr_reader :partial, :error_mode, :environment, :expression_cache, :string_scanner, :cursor, :variable_cacheable
 
+    # Shared global expression cache — persists across template parses.
+    # Populated during initial compile_all_tests (before pre_warmup_state snapshot).
+    # Avoids re-creating VariableLookup objects for the same markup across templates.
+    GLOBAL_EXPRESSION_CACHE = {}
+
     def warnings
       @warnings
     end
@@ -43,7 +48,7 @@ module Liquid
       @string_scanner.string = ""
 
       @expression_cache = if @variable_cacheable
-        {}
+        GLOBAL_EXPRESSION_CACHE
       elsif options[:expression_cache].nil?
         {}
       elsif options[:expression_cache].respond_to?(:[]) && options[:expression_cache].respond_to?(:[]=)
