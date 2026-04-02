@@ -3,7 +3,7 @@
 module Liquid
   class ParseContext
     attr_accessor :locale, :line_number, :trim_whitespace, :depth
-    attr_reader :partial, :error_mode, :environment, :expression_cache, :string_scanner, :cursor
+    attr_reader :partial, :error_mode, :environment, :expression_cache, :string_scanner, :cursor, :variable_cacheable
 
     def warnings
       @warnings
@@ -29,9 +29,12 @@ module Liquid
       if options.empty?
         @template_options = self.class.default_template_options
         @locale = @template_options[:locale]
+        # Safe to cache Variable objects thread-locally when using default options
+        @variable_cacheable = true
       else
         @template_options = options.dup
         @locale = @template_options[:locale] ||= I18n.default
+        @variable_cacheable = false
       end
       @warnings = Const::EMPTY_ARRAY
 
