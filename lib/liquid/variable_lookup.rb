@@ -4,7 +4,17 @@ module Liquid
   class VariableLookup
     COMMAND_METHODS = ['size', 'first', 'last'].freeze
 
-    attr_reader :name, :lookups
+    attr_reader :name
+
+    def lookups
+      if @lookups
+        @lookups
+      elsif @single_lookup
+        [@single_lookup]
+      else
+        Const::EMPTY_ARRAY
+      end
+    end
 
     def self.parse(markup, string_scanner = StringScanner.new(""), cache = nil)
       new(markup, string_scanner, cache)
@@ -88,14 +98,23 @@ module Liquid
           return
         end
         @name = markup.byteslice(0, dot_pos)
+        mlen = markup.bytesize
+        second_dot = markup.index('.', dot_pos + 1)
+        if second_dot.nil?
+          # Single-segment fast path: avoid Array allocation for "a.b" style (most common)
+          seg = markup.byteslice(dot_pos + 1, mlen - dot_pos - 1)
+          @command_flags = COMMAND_METHODS.include?(seg) ? 1 : 0
+          @single_lookup = seg
+          @lookups = nil  # signals single-lookup mode
+          return
+        end
         # Build lookups array from remaining dot-separated segments
         lookups = []
         @command_flags = 0
         pos = dot_pos + 1
-        len = markup.bytesize
-        while pos < len
+        while pos < mlen
           seg_start = pos
-          while pos < len
+          while pos < mlen
             b = markup.getbyte(pos)
             break if b == 46 # '.'
             pos += 1
@@ -148,8 +167,36 @@ module Liquid
       name = @name.instance_of?(String) ? @name : context.evaluate(@name)
       object = context.find_variable(name)
 
+      # Fast path: single-segment lookup (e.g. product.title) — avoids Array overhead
+      if @single_lookup
+        key = @single_lookup
+        if object.instance_of?(Hash) ? object.key?(key) :
+            (object.respond_to?(:[]) &&
+              ((object.respond_to?(:key?) && object.key?(key)) ||
+               (object.respond_to?(:fetch) && key.is_a?(Integer))))
+          object = context.lookup_and_evaluate(object, key)
+          unless object.instance_of?(String) || object.instance_of?(Integer) || object.instance_of?(Float) ||
+              object.instance_of?(Array) || object.instance_of?(Hash) || object.nil?
+            object = object.to_liquid
+            object.context = context if object.respond_to?(:context=)
+          end
+        elsif @command_flags != 0 && object.respond_to?(key)
+          object = object.send(key)
+          unless object.instance_of?(String) || object.instance_of?(Integer) || object.instance_of?(Array) || object.nil?
+            object = object.to_liquid
+            object.context = context if object.respond_to?(:context=)
+          end
+        elsif @command_flags != 0 && object.is_a?(String) && (key == "first" || key == "last")
+          object = key == "first" ? (object[0] || "") : (object[-1] || "")
+        else
+          return nil unless context.strict_variables
+          raise Liquid::UndefinedVariable, "undefined variable #{key}"
+        end
+        return object
+      end
+
       lookups = @lookups
-      return object if lookups.length == 0
+      return object if lookups.nil? || lookups.length == 0
 
       i = 0
       len = lookups.length
