@@ -27,14 +27,35 @@ module Liquid
 
     attr_reader :to, :from
 
+    # VariableSignature chars: [a-zA-Z0-9_\-\.\[\]\(\)]
+    def self.var_sig_byte?(b)
+      (b >= 97 && b <= 122) || (b >= 65 && b <= 90) || (b >= 48 && b <= 57) ||
+        b == 95 || b == 45 || b == 46 || b == 91 || b == 93 || b == 40 || b == 41
+    end
+
     def initialize(tag_name, markup, parse_context)
       super
-      if markup =~ Syntax
-        @to   = Regexp.last_match(1)
-        @from = Variable.new(Regexp.last_match(2), parse_context)
-      else
-        self.class.raise_syntax_error(parse_context)
+      # Byte-level parsing of "var_name = value_expr" — avoids MatchData allocation
+      len = markup.bytesize
+      pos = 0
+      pos += 1 while pos < len && (markup.getbyte(pos) == 32 || markup.getbyte(pos) == 9 || markup.getbyte(pos) == 10 || markup.getbyte(pos) == 13)
+      name_start = pos
+      pos += 1 while pos < len && self.class.var_sig_byte?(markup.getbyte(pos))
+      if pos > name_start
+        name_end = pos
+        pos += 1 while pos < len && (markup.getbyte(pos) == 32 || markup.getbyte(pos) == 9)
+        if pos < len && markup.getbyte(pos) == 61 # '='
+          pos += 1
+          pos += 1 while pos < len && (markup.getbyte(pos) == 32 || markup.getbyte(pos) == 9)
+          val_start = pos
+          val_end = len
+          val_end -= 1 while val_end > val_start && (markup.getbyte(val_end - 1) == 32 || markup.getbyte(val_end - 1) == 9 || markup.getbyte(val_end - 1) == 10 || markup.getbyte(val_end - 1) == 13)
+          @to   = markup.byteslice(name_start, name_end - name_start)
+          @from = Variable.new(val_end > val_start ? markup.byteslice(val_start, val_end - val_start) : "", parse_context)
+          return
+        end
       end
+      self.class.raise_syntax_error(parse_context)
     end
 
     def render_to_output_buffer(context, output)

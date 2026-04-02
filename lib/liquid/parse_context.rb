@@ -29,7 +29,7 @@ module Liquid
       if options.empty?
         @template_options = self.class.default_template_options
         @locale = @template_options[:locale]
-        # Safe to cache Variable objects thread-locally when using default options
+        # Safe to cache Variable objects per-parse when using default options
         @variable_cacheable = true
       else
         @template_options = options.dup
@@ -43,9 +43,7 @@ module Liquid
       @string_scanner.string = ""
 
       @expression_cache = if @variable_cacheable
-        # variable_cacheable=true means default options; use nil cache and rely on
-        # thread-local expression cache in Expression.parse (avoids per-parse Hash alloc)
-        nil
+        {}
       elsif options[:expression_cache].nil?
         {}
       elsif options[:expression_cache].respond_to?(:[]) && options[:expression_cache].respond_to?(:[]=)

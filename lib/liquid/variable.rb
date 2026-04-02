@@ -193,25 +193,12 @@ module Liquid
         if (hit = cache[expr_markup])
           hit
         else
-          tl = Thread.current[:_liq_expr_cache]
-          if tl && (hit = tl[expr_markup])
-            cache[expr_markup] = hit
-          else
-            hit = VariableLookup.parse_simple(expr_markup, ss, cache).freeze
-            cache[expr_markup] = hit
-            (tl ||= (Thread.current[:_liq_expr_cache] ||= {}))[expr_markup] = hit
-          end
+          hit = VariableLookup.parse_simple(expr_markup, ss, cache).freeze
+          cache[expr_markup] = hit
           hit
         end
       else
-        tl = Thread.current[:_liq_expr_cache]
-        if tl && (hit = tl[expr_markup])
-          hit
-        else
-          hit = VariableLookup.parse_simple(expr_markup, ss || StringScanner.new(""), nil).freeze
-          (Thread.current[:_liq_expr_cache] ||= {})[expr_markup] = hit
-          hit
-        end
+        VariableLookup.parse_simple(expr_markup, ss || StringScanner.new(""), nil).freeze
       end
 
       # End of markup? No filters.

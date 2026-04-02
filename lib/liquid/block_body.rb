@@ -280,19 +280,6 @@ module Liquid
     def create_variable(token, parse_context)
       len = token.bytesize
       if len >= 4 && token.getbyte(len - 1) == CLOSE_CURLEY_BYTE && token.getbyte(len - 2) == CLOSE_CURLEY_BYTE
-        # Thread-local Variable cache: reuse Variable objects across parses
-        # Keyed by full token to avoid markup extraction on cache hits
-        # Safe when line_number is nil, default options (lax error mode)
-        if parse_context.line_number.nil? && parse_context.variable_cacheable &&
-           parse_context.error_mode == :lax
-          tl_cache = Thread.current[:_liq_var_cache] ||= {}
-          cached = tl_cache[token]
-          return cached if cached
-          markup = parse_context.cursor.parse_variable_token(token)
-          new_var = Variable.new(markup, parse_context)
-          tl_cache[token] = new_var
-          return new_var
-        end
         markup = parse_context.cursor.parse_variable_token(token)
         return Variable.new(markup, parse_context)
       end
