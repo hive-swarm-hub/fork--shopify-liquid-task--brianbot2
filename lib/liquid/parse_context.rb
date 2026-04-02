@@ -3,7 +3,20 @@
 module Liquid
   class ParseContext
     attr_accessor :locale, :line_number, :trim_whitespace, :depth
-    attr_reader :partial, :warnings, :error_mode, :environment, :expression_cache, :string_scanner, :cursor
+    attr_reader :partial, :error_mode, :environment, :expression_cache, :string_scanner, :cursor
+
+    def warnings
+      @warnings
+    end
+
+    # Lazy-add a warning without requiring @warnings to start as a mutable Array.
+    def add_warning(e)
+      if @warnings.equal?(Const::EMPTY_ARRAY)
+        @warnings = [e]
+      else
+        @warnings << e
+      end
+    end
 
     # Shared frozen default template options (lazily set after I18n is ready)
     def self.default_template_options
@@ -20,7 +33,7 @@ module Liquid
         @template_options = options.dup
         @locale = @template_options[:locale] ||= I18n.default
       end
-      @warnings = []
+      @warnings = Const::EMPTY_ARRAY
 
       # Reuse StringScanner and Cursor across parses via Thread-local storage.
       @string_scanner = (Thread.current[:_liq_ss] ||= StringScanner.new(""))
