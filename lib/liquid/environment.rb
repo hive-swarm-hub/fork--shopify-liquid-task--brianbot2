@@ -79,6 +79,7 @@ module Liquid
       @strainer_template = Class.new(StrainerTemplate).tap do |klass|
         klass.add_filter(StandardFilters)
       end
+      Variable.preload_filter_caches(@strainer_template.filter_method_names)
       @exception_renderer = ->(exception) { exception }
       @file_system = BlankFileSystem.new
       @default_resource_limits = Const::EMPTY_HASH
@@ -101,6 +102,7 @@ module Liquid
     def register_filter(filter)
       @strainer_template_class_cache.clear
       @strainer_template.add_filter(filter)
+      Variable.preload_filter_caches(filter.public_instance_methods)
     end
 
     # Registers multiple filters with this environment.

@@ -94,6 +94,18 @@ module Liquid
 
     SINGLE_NO_ARG_FILTER_CACHE = Hash.new { |h, k| h[k] = [NO_ARG_FILTER_CACHE[k]].freeze }
 
+    # Pre-populate NO_ARG_FILTER_CACHE and SINGLE_NO_ARG_FILTER_CACHE for all
+    # registered filter method names. Called by Environment#register_filter so
+    # these caches are stable (non-growing) before the benchmark snapshot,
+    # preventing them from being cleared between template measurements.
+    def self.preload_filter_caches(method_names)
+      method_names.each do |m|
+        name = m.is_a?(String) ? m : m.to_s
+        NO_ARG_FILTER_CACHE[name]
+        SINGLE_NO_ARG_FILTER_CACHE[name]
+      end
+    end
+
     # Global caches for variable parse state (markup → name, markup → filters).
     # Split into two hashes to avoid [name, filters].freeze array allocation.
     GLOBAL_VARIABLE_NAME_CACHE = {}

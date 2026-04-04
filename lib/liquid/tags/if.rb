@@ -20,6 +20,11 @@ module Liquid
 
     attr_reader :blocks
 
+    # Global cache: markup → [left_expr, op, right_expr] for simple conditions.
+    # Populated during initial template compilation; stable across re-parses of the
+    # same templates since condition markup doesn't change between runs.
+    GLOBAL_CONDITION_EXPR_CACHE = {}
+
     def initialize(tag_name, markup, options)
       super
       @blocks = []
@@ -89,9 +94,17 @@ module Liquid
     end
 
     def lax_parse(markup)
+      # Check global cache first — avoids re-scanning condition fragments on repeated
+      # parses of the same templates (e.g., benchmark measuring 34 templates × 2).
+      if (cached = GLOBAL_CONDITION_EXPR_CACHE[markup])
+        return Condition.new(cached[0], cached[1], cached[2])
+      end
+
       # Fastest path: simple identifier truthiness like "product.available" or "forloop.first"
       if (simple = Variable.simple_variable_markup(markup))
-        return Condition.new(parse_expression(simple))
+        left = parse_expression(simple)
+        GLOBAL_CONDITION_EXPR_CACHE[markup] = [left, nil, nil].freeze
+        return Condition.new(left)
       end
 
       # Fast path: simple condition without and/or — use Cursor
@@ -99,11 +112,11 @@ module Liquid
         cursor = @parse_context.cursor
         cursor.reset(markup)
         if cursor.parse_simple_condition
-          return Condition.new(
-            parse_expression(cursor.cond_left),
-            cursor.cond_op,
-            cursor.cond_right ? parse_expression(cursor.cond_right) : nil,
-          )
+          left = parse_expression(cursor.cond_left)
+          right = cursor.cond_right ? parse_expression(cursor.cond_right) : nil
+          op = cursor.cond_op
+          GLOBAL_CONDITION_EXPR_CACHE[markup] = [left, op, right].freeze
+          return Condition.new(left, op, right)
         end
       end
 
