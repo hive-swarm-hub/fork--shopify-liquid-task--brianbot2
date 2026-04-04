@@ -50,8 +50,11 @@ module Liquid
 
             tag_name_match[1]
           else
-            token =~ BlockBody::FullToken
-            Regexp.last_match(2)
+            # Use cursor-based parsing to avoid MatchData and String allocations
+            first = token.getbyte(0)
+            if first == Cursor::LCURLY && token.getbyte(1) == Cursor::PCT
+              parse_context.cursor.parse_tag_token(token)
+            end
           end
 
           case tag_name
@@ -64,7 +67,10 @@ module Liquid
           end
 
           if comment_tag_depth.zero?
-            parse_context.trim_whitespace = (token[-3] == WhitespaceControl) unless tokenizer.for_liquid_tag
+            unless tokenizer.for_liquid_tag
+              # Avoid token[-3] String allocation; use byte comparison directly
+              parse_context.trim_whitespace = token.getbyte(token.bytesize - 3) == Cursor::DASH
+            end
             return false
           end
         end
