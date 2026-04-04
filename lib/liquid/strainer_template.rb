@@ -29,11 +29,11 @@ module Liquid
       end
 
       def invokable?(method)
-        key = method.is_a?(String) ? method : method.to_s
         cache = @invokable_cache ||= {}
-        cached = cache[key]
+        cached = cache[method]
         return cached unless cached.nil?
-        cache[key] = filter_methods.include?(key)
+        key = method.instance_of?(String) ? method : method.to_s
+        cache[method] = filter_methods.include?(key)
       end
 
       def inherited(subclass)

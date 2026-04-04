@@ -113,6 +113,8 @@ module Liquid
 
     def self.to_s(obj, seen = nil)
       case obj
+      when String
+        obj
       when Integer
         return (obj >= 0 && obj < 1000) ? SMALL_INT_STRINGS[obj] : obj.to_s
       when BigDecimal
