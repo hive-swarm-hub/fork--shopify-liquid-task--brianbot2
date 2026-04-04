@@ -41,21 +41,12 @@ module Liquid
     end
 
     TAG_INT_KEYS = {}
-    # Short names (≤7 bytes): key = bytes_as_int (fits in FIXNUM on 64-bit)
     %w[if for raw else echo case when endif elsif break cycle
        endfor assign render liquid endraw include comment capture
        endcase unless].each do |name|
       key = 0
       name.each_byte { |b| key = (key << 8) | b }
       TAG_INT_KEYS[key] = name.freeze
-    end
-    # Longer names (8-14 bytes): key = (len << 56) | first_7_bytes_int
-    # (len << 56) keeps result in FIXNUM range on 64-bit Ruby (max 14*2^56 < 2^62)
-    %w[tablerow continue endunless decrement increment endcapture endcomment endtablerow].each do |name|
-      len = name.bytesize
-      prefix = 0
-      name.bytes.first(7).each { |b| prefix = (prefix << 8) | b }
-      TAG_INT_KEYS[(len << 56) | prefix] = name.freeze
     end
     TAG_INT_KEYS.freeze
 
@@ -327,16 +318,6 @@ module Liquid
           j += 1
         end
         tag_name = TAG_INT_KEYS[int_key]
-      elsif name_len <= 14
-        # Extended: key = (len << 56) | first_7_bytes_int — stays in FIXNUM on 64-bit
-        prefix = 0
-        j = name_start
-        stop = name_start + 7
-        while j < stop
-          prefix = (prefix << 8) | token.getbyte(j)
-          j += 1
-        end
-        tag_name = TAG_INT_KEYS[(name_len << 56) | prefix]
       end
       tag_name ||= TAG_NAME_INTERN[token.byteslice(name_start, name_len)]
 
