@@ -377,8 +377,8 @@ module Liquid
     # @liquid_syntax string | split: string
     # @liquid_return [array[string]]
     def split(input, pattern)
-      pattern = Utils.to_s(pattern)
-      input = Utils.to_s(input)
+      pattern = pattern.instance_of?(String) ? pattern : Utils.to_s(pattern)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       input.split(pattern)
     end
 
@@ -693,9 +693,9 @@ module Liquid
     # @liquid_syntax string | replace: string, string
     # @liquid_return [string]
     def replace(input, string, replacement = '')
-      string = Utils.to_s(string)
-      replacement = Utils.to_s(replacement)
-      input = Utils.to_s(input)
+      string = string.instance_of?(String) ? string : Utils.to_s(string)
+      replacement = replacement.instance_of?(String) ? replacement : Utils.to_s(replacement)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       input.gsub(string, replacement)
     end
 
@@ -707,9 +707,9 @@ module Liquid
     # @liquid_syntax string | replace_first: string, string
     # @liquid_return [string]
     def replace_first(input, string, replacement = '')
-      string = Utils.to_s(string)
-      replacement = Utils.to_s(replacement)
-      input = Utils.to_s(input)
+      string = string.instance_of?(String) ? string : Utils.to_s(string)
+      replacement = replacement.instance_of?(String) ? replacement : Utils.to_s(replacement)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       input.sub(string, replacement)
     end
 
@@ -721,9 +721,9 @@ module Liquid
     # @liquid_syntax string | replace_last: string, string
     # @liquid_return [string]
     def replace_last(input, string, replacement)
-      input = Utils.to_s(input)
-      string = Utils.to_s(string)
-      replacement = Utils.to_s(replacement)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
+      string = string.instance_of?(String) ? string : Utils.to_s(string)
+      replacement = replacement.instance_of?(String) ? replacement : Utils.to_s(replacement)
 
       start_index = input.rindex(string)
 
@@ -775,8 +775,8 @@ module Liquid
     # @liquid_syntax string | append: string
     # @liquid_return [string]
     def append(input, string)
-      input = Utils.to_s(input)
-      string = Utils.to_s(string)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
+      string = string.instance_of?(String) ? string : Utils.to_s(string)
       input + string
     end
 
@@ -806,8 +806,8 @@ module Liquid
     # @liquid_syntax string | prepend: string
     # @liquid_return [string]
     def prepend(input, string)
-      input = Utils.to_s(input)
-      string = Utils.to_s(string)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
+      string = string.instance_of?(String) ? string : Utils.to_s(string)
       string + input
     end
 
