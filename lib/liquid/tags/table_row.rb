@@ -29,6 +29,9 @@ module Liquid
 
     attr_reader :variable_name, :collection_name, :attributes
 
+    # Global cache: markup → [variable_name, collection_name_expr, frozen_attributes_hash]
+    GLOBAL_TABLE_ROW_PARSE_CACHE = {}
+
     def initialize(tag_name, markup, options)
       super
       parse_with_selected_parser(markup)
@@ -67,6 +70,13 @@ module Liquid
     end
 
     def lax_parse(markup)
+      if (cached = GLOBAL_TABLE_ROW_PARSE_CACHE[markup])
+        @variable_name   = cached[0]
+        @collection_name = cached[1]
+        @attributes      = cached[2]
+        return
+      end
+
       if markup =~ Syntax
         @variable_name   = Regexp.last_match(1)
         @collection_name = parse_expression(Regexp.last_match(2))
@@ -77,6 +87,9 @@ module Liquid
       else
         raise SyntaxError, options[:locale].t("errors.syntax.table_row")
       end
+
+      @attributes.freeze
+      GLOBAL_TABLE_ROW_PARSE_CACHE[markup] = [@variable_name, @collection_name, @attributes].freeze
     end
 
     def render_to_output_buffer(context, output)

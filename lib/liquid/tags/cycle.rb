@@ -21,6 +21,11 @@ module Liquid
 
     attr_reader :variables
 
+    # Global cache: markup → [variables, name, is_named]
+    # Only caches named cycles and unnamed literal cycles (not unnamed variable-lookup cycles,
+    # which require dup for counter independence).
+    GLOBAL_CYCLE_PARSE_CACHE = {}
+
     def initialize(tag_name, markup, options)
       super
       parse_with_selected_parser(markup)
@@ -96,6 +101,13 @@ module Liquid
     end
 
     def lax_parse(markup)
+      if (cached = GLOBAL_CYCLE_PARSE_CACHE[markup])
+        @variables = cached[0]
+        @name      = cached[1]
+        @is_named  = cached[2]
+        return
+      end
+
       case markup
       when NamedSyntax
         @variables = variables_from_string(Regexp.last_match(2))
@@ -107,6 +119,12 @@ module Liquid
         @is_named = !@name.match?(UNNAMED_CYCLE_PATTERN)
       else
         raise SyntaxError, options[:locale].t("errors.syntax.cycle")
+      end
+
+      # Cache only if safe: named cycles, or unnamed cycles with no VariableLookup
+      # (unnamed cycles with VariableLookup need dup for counter independence)
+      if @is_named || @variables.none? { |v| v.is_a?(VariableLookup) }
+        GLOBAL_CYCLE_PARSE_CACHE[markup] = [@variables, @name, @is_named].freeze
       end
     end
 
