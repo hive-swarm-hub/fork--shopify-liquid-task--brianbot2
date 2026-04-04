@@ -67,7 +67,7 @@ module Liquid
     # @liquid_syntax string | downcase
     # @liquid_return [string]
     def downcase(input)
-      Utils.to_s(input).downcase
+      input.instance_of?(String) ? input.downcase : Utils.to_s(input).downcase
     end
 
     # @liquid_public_docs
@@ -78,7 +78,7 @@ module Liquid
     # @liquid_syntax string | upcase
     # @liquid_return [string]
     def upcase(input)
-      Utils.to_s(input).upcase
+      input.instance_of?(String) ? input.upcase : Utils.to_s(input).upcase
     end
 
     # @liquid_public_docs
@@ -89,7 +89,7 @@ module Liquid
     # @liquid_syntax string | capitalize
     # @liquid_return [string]
     def capitalize(input)
-      Utils.to_s(input).capitalize
+      input.instance_of?(String) ? input.capitalize : Utils.to_s(input).capitalize
     end
 
     # @liquid_public_docs
@@ -116,7 +116,8 @@ module Liquid
     # @liquid_syntax string | escape_once
     # @liquid_return [string]
     def escape_once(input)
-      Utils.to_s(input).gsub(HTML_ESCAPE_ONCE_REGEXP, HTML_ESCAPE)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
+      input.gsub(HTML_ESCAPE_ONCE_REGEXP, HTML_ESCAPE)
     end
 
     # @liquid_public_docs
@@ -131,7 +132,8 @@ module Liquid
     # @liquid_syntax string | url_encode
     # @liquid_return [string]
     def url_encode(input)
-      CGI.escape(Utils.to_s(input)) unless input.nil?
+      return if input.nil?
+      CGI.escape(input.instance_of?(String) ? input : Utils.to_s(input))
     end
 
     # @liquid_public_docs
@@ -243,10 +245,10 @@ module Liquid
     # @liquid_return [string]
     def truncate(input, length = 50, truncate_string = "...")
       return if input.nil?
-      input_str = Utils.to_s(input)
-      length    = Utils.to_integer(length)
+      input_str = input.instance_of?(String) ? input : Utils.to_s(input)
+      length    = length.instance_of?(Integer) ? length : Utils.to_integer(length)
 
-      truncate_string_str = Utils.to_s(truncate_string)
+      truncate_string_str = truncate_string.instance_of?(String) ? truncate_string : Utils.to_s(truncate_string)
 
       l = length - truncate_string_str.length
       l = 0 if l < 0
@@ -275,8 +277,8 @@ module Liquid
     # @liquid_return [string]
     def truncatewords(input, words = 15, truncate_string = "...")
       return if input.nil?
-      input = Utils.to_s(input)
-      words = Utils.to_integer(words)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
+      words = words.instance_of?(Integer) ? words : Utils.to_integer(words)
       words = 1 if words <= 0
 
       return input if words + 1 > MAX_I32
@@ -401,7 +403,7 @@ module Liquid
     # @liquid_syntax string | strip
     # @liquid_return [string]
     def strip(input)
-      input = Utils.to_s(input)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       input.strip
     end
 
@@ -413,7 +415,7 @@ module Liquid
     # @liquid_syntax string | lstrip
     # @liquid_return [string]
     def lstrip(input)
-      input = Utils.to_s(input)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       input.lstrip
     end
 
@@ -425,7 +427,7 @@ module Liquid
     # @liquid_syntax string | rstrip
     # @liquid_return [string]
     def rstrip(input)
-      input = Utils.to_s(input)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       input.rstrip
     end
 
@@ -438,7 +440,7 @@ module Liquid
     # @liquid_return [string]
     STRIP_HTML_BLOCKS_RE = /(?:<script|<!--|<style)/i
     def strip_html(input)
-      input = Utils.to_s(input)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       # Fast path: no HTML tags present
       return input unless input.include?('<')
       # Only check for script/comment/style blocks if they might exist
@@ -460,7 +462,7 @@ module Liquid
     # @liquid_return [string]
     STRIP_NEWLINES_RE = /\r?\n/
     def strip_newlines(input)
-      input = Utils.to_s(input)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       # Fast path: no newlines present
       return input unless input.include?("\n")
       input.gsub(STRIP_NEWLINES_RE, '')
@@ -817,7 +819,7 @@ module Liquid
     # @liquid_syntax string | newline_to_br
     # @liquid_return [string]
     def newline_to_br(input)
-      input = Utils.to_s(input)
+      input = input.instance_of?(String) ? input : Utils.to_s(input)
       input.gsub(/\r?\n/, "<br />\n")
     end
 
@@ -869,12 +871,13 @@ module Liquid
       # Cache stable input/format pairs globally so repeated Time.parse/strftime
       # work can be skipped. Keep "now"/"today" uncached so the filter remains
       # time-sensitive.
-      normalized_input = input.downcase if input.is_a?(String)
-
-      if normalized_input == 'now' || normalized_input == 'today'
-        date = Utils.to_date(input)
-        return input unless date
-        return date.strftime(str_format)
+      if input.is_a?(String) && input.bytesize <= 5
+        normalized_input = input.downcase
+        if normalized_input == 'now' || normalized_input == 'today'
+          date = Utils.to_date(input)
+          return input unless date
+          return date.strftime(str_format)
+        end
       end
 
       case input
