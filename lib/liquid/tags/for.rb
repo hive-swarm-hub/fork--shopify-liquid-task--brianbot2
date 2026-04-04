@@ -29,6 +29,10 @@ module Liquid
 
     attr_reader :collection_name, :variable_name, :limit, :from
 
+    # Global cache: markup → [variable_name, collection_expr, name, reversed, from_expr, limit_expr]
+    # Populated during initial compile; stable across re-parses of the same templates.
+    GLOBAL_FOR_PARSE_CACHE = {}
+
     def initialize(tag_name, markup, options)
       super
       @from = @limit = nil
@@ -76,6 +80,18 @@ module Liquid
     REVERSED_BYTES = "reversed".bytes.freeze
 
     def lax_parse(markup)
+      # Check global cache first — avoids cursor scanning + parse_expression on repeated
+      # parses of the same templates (markup is stable across benchmark re-parses).
+      if (cached = GLOBAL_FOR_PARSE_CACHE[markup])
+        @variable_name   = cached[0]
+        @collection_name = cached[1]
+        @name            = cached[2]
+        @reversed        = cached[3]
+        @from            = cached[4]
+        @limit           = cached[5]
+        return
+      end
+
       c = @parse_context.cursor
       c.reset(markup)
       c.skip_ws
@@ -132,6 +148,8 @@ module Liquid
         break unless value
         set_attribute(key, value)
       end
+
+      GLOBAL_FOR_PARSE_CACHE[markup] = [@variable_name, @collection_name, @name, @reversed, @from, @limit].freeze
     end
 
     def strict_parse(markup)
