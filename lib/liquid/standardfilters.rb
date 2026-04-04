@@ -56,7 +56,13 @@ module Liquid
     # @liquid_syntax variable | size
     # @liquid_return [number]
     def size(input)
-      input.respond_to?(:size) ? input.size : 0
+      if input.instance_of?(String) || input.instance_of?(Array) || input.instance_of?(Hash)
+        input.size
+      elsif input.respond_to?(:size)
+        input.size
+      else
+        0
+      end
     end
 
     # @liquid_public_docs
@@ -911,7 +917,8 @@ module Liquid
     # @liquid_syntax array | first
     # @liquid_return [untyped]
     def first(array)
-      # ActiveSupport returns "" for empty strings, not nil
+      return array[0] || "" if array.instance_of?(String)
+      return array.first if array.instance_of?(Array)
       return array[0] || "" if array.is_a?(String)
       array.first if array.respond_to?(:first)
     end
@@ -924,7 +931,8 @@ module Liquid
     # @liquid_syntax array | last
     # @liquid_return [untyped]
     def last(array)
-      # ActiveSupport returns "" for empty strings, not nil
+      return array[-1] || "" if array.instance_of?(String)
+      return array.last if array.instance_of?(Array)
       return array[-1] || "" if array.is_a?(String)
       array.last if array.respond_to?(:last)
     end
