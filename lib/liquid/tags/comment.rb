@@ -26,6 +26,16 @@ module Liquid
       true
     end
 
+    def nodelist
+      Const::EMPTY_ARRAY
+    end
+
+    # Override Block#parse to skip BlockBody allocation — comment consumes all
+    # tokens without building child nodes, so @body is never needed.
+    def parse(tokens)
+      parse_body(nil, tokens)
+    end
+
     private
 
     def parse_body(body, tokenizer)
