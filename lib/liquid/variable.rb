@@ -480,12 +480,12 @@ module Liquid
       obj = @name.instance_of?(VariableLookup) ? @name.evaluate(context) : context.evaluate(@name)
 
       @filters.each do |filter_name, filter_args, filter_kwargs|
-        if filter_kwargs.nil? && filter_args.equal?(Const::EMPTY_ARRAY)
+        if filter_args.empty? && !filter_kwargs
           obj = context.invoke_single(filter_name, obj)
-        elsif filter_kwargs.nil? && filter_args.length == 1
+        elsif !filter_kwargs && filter_args.length == 1
           # Single positional arg — most common after no-arg
           obj = context.invoke_two(filter_name, obj, context.evaluate(filter_args[0]))
-        elsif filter_kwargs.nil? && filter_args.length == 2
+        elsif !filter_kwargs && filter_args.length == 2
           obj = context.invoke_three(filter_name, obj, context.evaluate(filter_args[0]), context.evaluate(filter_args[1]))
         else
           filter_args = evaluate_filter_expressions(context, filter_args, filter_kwargs)
@@ -504,11 +504,11 @@ module Liquid
         # Fast path: single filter (very common, e.g. {{ x | escape }})
         fn, fa, fk = filters[0]
         obj = @name.instance_of?(VariableLookup) ? @name.evaluate(context) : context.evaluate(@name)
-        obj = if fk.nil? && fa.equal?(Const::EMPTY_ARRAY)
+        obj = if fa.empty? && !fk
           context.invoke_single(fn, obj)
-        elsif fk.nil? && fa.length == 1
+        elsif !fk && fa.length == 1
           context.invoke_two(fn, obj, context.evaluate(fa[0]))
-        elsif fk.nil? && fa.length == 2
+        elsif !fk && fa.length == 2
           context.invoke_three(fn, obj, context.evaluate(fa[0]), context.evaluate(fa[1]))
         else
           render(context)
