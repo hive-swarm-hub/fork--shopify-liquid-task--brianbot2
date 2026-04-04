@@ -3,7 +3,8 @@
 module Liquid
   class PartialCache
     def self.load(template_name, context:, parse_context:)
-      cached_partials = context.registers[:cached_partials]
+      # Lazily initialize cached_partials in @static so subcontexts share the same cache
+      cached_partials = context.registers.static[:cached_partials] ||= {}
       cache_key = "#{template_name}:#{parse_context.error_mode}"
       cached = cached_partials[cache_key]
       return cached if cached
@@ -13,7 +14,7 @@ module Liquid
 
       parse_context.partial = true
 
-      template_factory = context.registers[:template_factory]
+      template_factory = context.registers[:template_factory] || Liquid::TemplateFactory::DEFAULT
       template = template_factory.for(template_name)
 
       begin

@@ -48,9 +48,7 @@ module Liquid
       # Lazy-init StringScanner — only needed if Context#[] is called during render
       @string_scanner = nil
 
-      @registers.static[:cached_partials] ||= {}
       @registers.static[:file_system] ||= environment.file_system
-      @registers.static[:template_factory] ||= Liquid::TemplateFactory.new
 
       self.exception_renderer = environment.exception_renderer
       if rethrow_errors
