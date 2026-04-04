@@ -21,7 +21,8 @@ module Liquid
   class Unless < If
     def render_to_output_buffer(context, output)
       # First condition is interpreted backwards ( if not )
-      first_block = @blocks.first
+      # @first_block is always set; @blocks is nil for single-condition unless
+      first_block = @first_block
       result = Liquid::Utils.to_liquid_value(
         first_block.evaluate(context),
       )
@@ -30,14 +31,16 @@ module Liquid
         return first_block.attachment.render_to_output_buffer(context, output)
       end
 
-      # After the first condition unless works just like if
-      @blocks[1..-1].each do |block|
-        result = Liquid::Utils.to_liquid_value(
-          block.evaluate(context),
-        )
-
-        if result
-          return block.attachment.render_to_output_buffer(context, output)
+      # After the first condition unless works just like if (check else/elsif)
+      if @blocks
+        idx = 1  # skip first block (already handled above)
+        blocks = @blocks
+        len = blocks.length
+        while idx < len
+          block = blocks[idx]
+          result = Liquid::Utils.to_liquid_value(block.evaluate(context))
+          return block.attachment.render_to_output_buffer(context, output) if result
+          idx += 1
         end
       end
 

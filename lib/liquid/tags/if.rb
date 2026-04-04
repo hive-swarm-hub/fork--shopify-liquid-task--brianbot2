@@ -18,8 +18,6 @@ module Liquid
     ExpressionsAndOperators = /(?:\b(?:\s?and\s?|\s?or\s?)\b|(?:\s*(?!\b(?:\s?and\s?|\s?or\s?)\b)(?:#{QuotedFragment}|\S+)\s*)+)/o
     BOOLEAN_OPERATORS       = %w(and or).freeze
 
-    attr_reader :blocks
-
     # Global cache: markup → [left_expr, op, right_expr] for simple conditions.
     # Populated during initial template compilation; stable across re-parses of the
     # same templates since condition markup doesn't change between runs.
@@ -27,20 +25,42 @@ module Liquid
 
     def initialize(tag_name, markup, options)
       super
-      @blocks = []
+      # @blocks is nil for the common single-condition case (no else/elsif).
+      # This avoids allocating a 1-element Array for 195/247 if/unless tags.
+      # push_block sets @first_block for first, then lazily creates @blocks for more.
+      @blocks = nil
+      @first_block = nil
       push_block('if', markup)
     end
 
+    # Returns blocks as an Array (creates one lazily for the single-block case).
+    def blocks
+      @blocks || (@first_block ? [@first_block] : [])
+    end
+
     def nodelist
-      @blocks.map(&:attachment)
+      if @blocks
+        @blocks.map(&:attachment)
+      elsif @first_block
+        [@first_block.attachment]
+      else
+        []
+      end
     end
 
     def parse(tokens)
-      while parse_body(@blocks.last.attachment, tokens)
+      last = @blocks ? @blocks.last : @first_block
+      while parse_body(last.attachment, tokens)
+        last = @blocks.last  # @blocks is set after second push_block
       end
-      @blocks.reverse_each do |block|
-        block.attachment.remove_blank_strings if blank?
-        block.attachment.freeze
+      if @blocks
+        @blocks.reverse_each do |block|
+          block.attachment.remove_blank_strings if blank?
+          block.attachment.freeze
+        end
+      else
+        @first_block.attachment.remove_blank_strings if blank?
+        @first_block.attachment.freeze
       end
     end
 
@@ -56,6 +76,14 @@ module Liquid
     end
 
     def render_to_output_buffer(context, output)
+      # Fast path: single condition (no else/elsif) — the common case
+      if @blocks.nil?
+        first = @first_block
+        result = Liquid::Utils.to_liquid_value(first.evaluate(context))
+        return first.attachment.render_to_output_buffer(context, output) if result
+        return output
+      end
+
       idx = 0
       blocks = @blocks
       len = blocks.length
@@ -85,7 +113,13 @@ module Liquid
         parse_with_selected_parser(markup)
       end
 
-      @blocks.push(block)
+      if @first_block.nil?
+        @first_block = block
+      else
+        # Second or later block — create @blocks array
+        @blocks = [@first_block] if @blocks.nil?
+        @blocks << block
+      end
       block.attach(new_body)
     end
 
