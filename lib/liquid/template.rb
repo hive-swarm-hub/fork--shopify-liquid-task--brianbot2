@@ -155,7 +155,10 @@ module Liquid
         drop         = args.shift
         drop.context = Context.new([drop, assigns], instance_assigns, registers, @rethrow_errors, @resource_limits, Const::EMPTY_HASH, @environment)
       when Hash
-        Context.new([args.shift, assigns], instance_assigns, registers, @rethrow_errors, @resource_limits, Const::EMPTY_HASH, @environment)
+        user_assigns = args.shift
+        # Avoid 2-element array when template has no assigns (common case)
+        envs = (@assigns.nil? || @assigns.empty?) ? user_assigns : [user_assigns, @assigns]
+        Context.new(envs, instance_assigns, registers, @rethrow_errors, @resource_limits, Const::EMPTY_HASH, @environment)
       when nil
         Context.new(assigns, instance_assigns, registers, @rethrow_errors, @resource_limits, Const::EMPTY_HASH, @environment)
       else
