@@ -1085,6 +1085,11 @@ module Liquid
     # @liquid_return [untyped]
     # @liquid_optional_param allow_false: [boolean] Whether to use false values instead of the default.
     def default(input, default_value = '', options = {})
+      # Fast path: non-empty String is always truthy and has respond_to?(:empty?) → use input
+      if input.instance_of?(String)
+        return input unless input.empty?
+        return default_value
+      end
       options = {} unless options.is_a?(Hash)
       false_check = options['allow_false'] ? input.nil? : !Liquid::Utils.to_liquid_value(input)
       false_check || (input.respond_to?(:empty?) && input.empty?) ? default_value : input
